@@ -27,14 +27,14 @@ from datatrove.utils.hashing import HashConfig
 """
 DUMP_TO_PROCESS = "CC-MAIN-2023-50"  # example
 
-MAIN_OUTPUT_PATH = "./output/fineweb_argentina"
+MAIN_OUTPUT_PATH = "./data/argentina"
 FILTERING_OUTPUT_PATH = f"{MAIN_OUTPUT_PATH}/base_processing"
 
 main_processing_executor = SlurmPipelineExecutor(
     job_name=f"cc_{DUMP_TO_PROCESS}_argentina",
     pipeline=[
         WarcReader(
-            f"s3://commoncrawl/crawl-data/{DUMP_TO_PROCESS}/segments/",
+            f"./data/commoncrawl/{DUMP_TO_PROCESS}/segments/",
             glob_pattern="*/warc/*",  # we want the warc files
             default_metadata={"dump": DUMP_TO_PROCESS},
         ),
@@ -66,7 +66,7 @@ main_processing_executor = SlurmPipelineExecutor(
     tasks=8000,
     time="10:00:00",
     logging_dir=f"{MAIN_OUTPUT_PATH}/logs/base_processing/{DUMP_TO_PROCESS}",
-    slurm_logs_folder=f"logs/base_processing/{DUMP_TO_PROCESS}/slurm_logs",  # must be local
+    slurm_logs_folder=f"./logs/base_processing/{DUMP_TO_PROCESS}/slurm_logs",  # must be local
     randomize_start_duration=180,  # don't hit the bucket all at once with the list requests
     mem_per_cpu_gb=2,
     partition="hopper-cpu",
@@ -88,10 +88,10 @@ minhash_config = MinhashConfig(
     n_grams=5,
 )
 
-S3_MINHASH_BASE_PATH = f"{MAIN_OUTPUT_PATH}/minhash"
+MINHASH_BASE_PATH = f"{MAIN_OUTPUT_PATH}/minhash"
 
-S3_LOGS_FOLDER = f"{MAIN_OUTPUT_PATH}/logs/minhash"
-LOCAL_LOGS_FOLDER = "logs/minhash"
+LOGS_FOLDER = f"{MAIN_OUTPUT_PATH}/logs/minhash"
+LOCAL_LOGS_FOLDER = "./logs/minhash"
 
 TOTAL_TASKS = 1000
 
@@ -106,13 +106,13 @@ stage1 = SlurmPipelineExecutor(
     pipeline=[
         INPUT_READER,
         MinhashDedupSignature(
-            output_folder=f"{S3_MINHASH_BASE_PATH}/{DUMP_TO_PROCESS}/signatures", config=minhash_config
+            output_folder=f"{MINHASH_BASE_PATH}/{DUMP_TO_PROCESS}/signatures", config=minhash_config
         ),
     ],
     tasks=TOTAL_TASKS,
     time="5:00:00",
     partition="hopper-cpu",
-    logging_dir=f"{S3_LOGS_FOLDER}/signatures",
+    logging_dir=f"{LOGS_FOLDER}/signatures",
     slurm_logs_folder=f"{LOCAL_LOGS_FOLDER}/signatures/slurm_logs",
     randomize_start_duration=180,
     depends=main_processing_executor,  # only start after the first one completes
@@ -122,15 +122,15 @@ stage2 = SlurmPipelineExecutor(
     job_name=f"mh2_{DUMP_TO_PROCESS}_argentina",
     pipeline=[
         MinhashDedupBuckets(
-            input_folder=f"{S3_MINHASH_BASE_PATH}/{DUMP_TO_PROCESS}/signatures",
-            output_folder=f"{S3_MINHASH_BASE_PATH}/{DUMP_TO_PROCESS}/buckets",
+            input_folder=f"{MINHASH_BASE_PATH}/{DUMP_TO_PROCESS}/signatures",
+            output_folder=f"{MINHASH_BASE_PATH}/{DUMP_TO_PROCESS}/buckets",
             config=MinhashConfig(hash_config=minhash_config.hash_config),
         ),
     ],
     tasks=minhash_config.num_buckets * 50,  # the code supports parallelizing each bucket. here we run 50
     # workers per bucket
     randomize_start_duration=180,
-    logging_dir=f"{S3_LOGS_FOLDER}/buckets",
+    logging_dir=f"{LOGS_FOLDER}/buckets",
     partition="hopper-cpu",
     time="02:00:00",
     mem_per_cpu_gb=4,
@@ -143,13 +143,13 @@ stage3 = SlurmPipelineExecutor(
     job_name=f"mh3_{DUMP_TO_PROCESS}_argentina",
     pipeline=[
         MinhashDedupCluster(
-            input_folder=f"{S3_MINHASH_BASE_PATH}/{DUMP_TO_PROCESS}/buckets",
-            output_folder=f"{S3_MINHASH_BASE_PATH}/{DUMP_TO_PROCESS}/remove_ids",
+            input_folder=f"{MINHASH_BASE_PATH}/{DUMP_TO_PROCESS}/buckets",
+            output_folder=f"{MINHASH_BASE_PATH}/{DUMP_TO_PROCESS}/remove_ids",
             config=minhash_config,
         ),
     ],
     tasks=1,  # this step runs on a single task
-    logging_dir=f"{S3_LOGS_FOLDER}/clustering",
+    logging_dir=f"{LOGS_FOLDER}/clustering",
     partition="hopper-cpu",
     time="30:00:00",  # and can also be quite slow. Usually not this slow though
     mem_per_cpu_gb=25,
@@ -164,13 +164,13 @@ stage4 = SlurmPipelineExecutor(
         INPUT_READER,
         TokensCounter(),  # you can remove this one, it's just a nice way to know how many tokens we have
         # before and after dedup
-        MinhashDedupFilter(input_folder=f"{S3_MINHASH_BASE_PATH}/{DUMP_TO_PROCESS}/remove_ids"),
+        MinhashDedupFilter(input_folder=f"{MINHASH_BASE_PATH}/{DUMP_TO_PROCESS}/remove_ids"),
         # run the PII removal
         PIIFormatter(),
-        JsonlWriter(f"{S3_MINHASH_BASE_PATH}/{DUMP_TO_PROCESS}/deduped_output"),
+        JsonlWriter(f"{MINHASH_BASE_PATH}/{DUMP_TO_PROCESS}/deduped_output"),
     ],
     tasks=TOTAL_TASKS,
-    logging_dir=f"{S3_LOGS_FOLDER}/filtering",
+    logging_dir=f"{LOGS_FOLDER}/filtering",
     partition="hopper-cpu",
     time="5:00:00",
     mem_per_cpu_gb=4,
