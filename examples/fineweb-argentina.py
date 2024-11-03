@@ -69,7 +69,7 @@ main_processing_executor = SlurmPipelineExecutor(
     slurm_logs_folder=f"./logs/base_processing/{DUMP_TO_PROCESS}/slurm_logs",  # must be local
     randomize_start_duration=180,  # don't hit the bucket all at once with the list requests
     mem_per_cpu_gb=2,
-    partition="hopper-cpu",
+    partition="fineweb",
 )
 main_processing_executor.run()
 
@@ -111,7 +111,7 @@ stage1 = SlurmPipelineExecutor(
     ],
     tasks=TOTAL_TASKS,
     time="5:00:00",
-    partition="hopper-cpu",
+    partition="fineweb",
     logging_dir=f"{LOGS_FOLDER}/signatures",
     slurm_logs_folder=f"{LOCAL_LOGS_FOLDER}/signatures/slurm_logs",
     randomize_start_duration=180,
@@ -131,7 +131,7 @@ stage2 = SlurmPipelineExecutor(
     # workers per bucket
     randomize_start_duration=180,
     logging_dir=f"{LOGS_FOLDER}/buckets",
-    partition="hopper-cpu",
+    partition="fineweb",
     time="02:00:00",
     mem_per_cpu_gb=4,
     cpus_per_task=3,  # you can add run more (smaller) tasks if you do not have a lot of memory
@@ -150,7 +150,7 @@ stage3 = SlurmPipelineExecutor(
     ],
     tasks=1,  # this step runs on a single task
     logging_dir=f"{LOGS_FOLDER}/clustering",
-    partition="hopper-cpu",
+    partition="fineweb",
     time="30:00:00",  # and can also be quite slow. Usually not this slow though
     mem_per_cpu_gb=25,
     cpus_per_task=8,  # if you dedup a full dump, you do need a lot of memory for this one
@@ -171,7 +171,7 @@ stage4 = SlurmPipelineExecutor(
     ],
     tasks=TOTAL_TASKS,
     logging_dir=f"{LOGS_FOLDER}/filtering",
-    partition="hopper-cpu",
+    partition="fineweb",
     time="5:00:00",
     mem_per_cpu_gb=4,
     depends=stage3,
