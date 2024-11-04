@@ -63,12 +63,12 @@ main_processing_executor = SlurmPipelineExecutor(
         ),
         JsonlWriter(f"{FILTERING_OUTPUT_PATH}/output/{DUMP_TO_PROCESS}"),
     ],
-    tasks=8000,
+    tasks=400,
     time="10:00:00",
     logging_dir=f"{MAIN_OUTPUT_PATH}/logs/base_processing/{DUMP_TO_PROCESS}",
     slurm_logs_folder=f"./logs/base_processing/{DUMP_TO_PROCESS}/slurm_logs",  # must be local
     randomize_start_duration=180,  # don't hit the bucket all at once with the list requests
-    mem_per_cpu_gb=2,
+    mem_per_cpu_gb=1,
     partition="fineweb",
 )
 main_processing_executor.run()
@@ -83,7 +83,7 @@ minhash_config = MinhashConfig(
         hash_fc="sha1",  # better precision -> fewer false positives (collisions)
         precision=64,
     ),
-    num_buckets=14,
+    num_buckets=2,
     hashes_per_bucket=8,
     n_grams=5,
 )
@@ -133,8 +133,8 @@ stage2 = SlurmPipelineExecutor(
     logging_dir=f"{LOGS_FOLDER}/buckets",
     partition="fineweb",
     time="02:00:00",
-    mem_per_cpu_gb=4,
-    cpus_per_task=3,  # you can add run more (smaller) tasks if you do not have a lot of memory
+    mem_per_cpu_gb=1,
+    cpus_per_task=1,  # you can add run more (smaller) tasks if you do not have a lot of memory
     depends=stage1,
 )
 
@@ -152,8 +152,8 @@ stage3 = SlurmPipelineExecutor(
     logging_dir=f"{LOGS_FOLDER}/clustering",
     partition="fineweb",
     time="30:00:00",  # and can also be quite slow. Usually not this slow though
-    mem_per_cpu_gb=25,
-    cpus_per_task=8,  # if you dedup a full dump, you do need a lot of memory for this one
+    mem_per_cpu_gb=1,
+    cpus_per_task=1,  # if you dedup a full dump, you do need a lot of memory for this one
     depends=stage2,
 )
 
@@ -173,7 +173,7 @@ stage4 = SlurmPipelineExecutor(
     logging_dir=f"{LOGS_FOLDER}/filtering",
     partition="fineweb",
     time="5:00:00",
-    mem_per_cpu_gb=4,
+    mem_per_cpu_gb=1,
     depends=stage3,
 )
 
