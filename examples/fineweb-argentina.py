@@ -70,7 +70,7 @@ main_processing_executor = SlurmPipelineExecutor(
     randomize_start_duration=180,  # don't hit the bucket all at once with the list requests
     mem_per_cpu_gb=1,
     partition="fineweb",
-    srun_args = {'display':'fineweb'}
+    #srun_args = {'display':'fineweb'}
 )
 main_processing_executor.run()
 
@@ -117,7 +117,7 @@ stage1 = SlurmPipelineExecutor(
     slurm_logs_folder=f"{LOCAL_LOGS_FOLDER}/signatures/slurm_logs",
     randomize_start_duration=180,
     depends=main_processing_executor,  # only start after the first one completes
-    srun_args={'display':'fineweb'}
+    #srun_args={'display':'fineweb'}
 )
 
 stage2 = SlurmPipelineExecutor(
@@ -138,7 +138,7 @@ stage2 = SlurmPipelineExecutor(
     mem_per_cpu_gb=1,
     cpus_per_task=1,  # you can add run more (smaller) tasks if you do not have a lot of memory
     depends=stage1,
-    srun_args={'display':'fineweb'}
+    #srun_args={'display':'fineweb'}
 )
 
 
@@ -158,7 +158,7 @@ stage3 = SlurmPipelineExecutor(
     mem_per_cpu_gb=1,
     cpus_per_task=1,  # if you dedup a full dump, you do need a lot of memory for this one
     depends=stage2,
-    srun_args={'display':'fineweb'}
+    #srun_args={'display':'fineweb'}
 )
 
 
@@ -179,7 +179,7 @@ stage4 = SlurmPipelineExecutor(
     time="5:00:00",
     mem_per_cpu_gb=1,
     depends=stage3,
-    srun_args={'display':'fineweb'}
+    #srun_args={'display':'fineweb'}
 )
 
 # launch dedup pipelines
