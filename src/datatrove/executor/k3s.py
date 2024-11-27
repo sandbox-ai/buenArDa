@@ -163,7 +163,8 @@ class K3sPipelineExecutor(PipelineExecutor):
         container = client.V1Container(
             name=self.job_name,
             image=self.image,
-            command=["python", "-c", "from datatrove.executor import launch_pickled_pipeline; launch_pickled_pipeline()"],
+            command=["bash", "-c"],
+            args=["pip install datatrove[all] && python -c 'from datatrove.executor import launch_pickled_pipeline; launch_pickled_pipeline()'"],
             resources=client.V1ResourceRequirements(
                 requests={
                     "cpu": self.cpu_request,
