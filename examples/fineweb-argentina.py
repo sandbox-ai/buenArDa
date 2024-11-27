@@ -68,7 +68,6 @@ main_processing_executor = K3sPipelineExecutor(
     memory_request="1Gi",  # Replace mem_per_cpu_gb with memory request
     workers=10,  # Control parallel jobs
     namespace="default",
-    image="alpine:latest",  # Add required container image
     logging_dir=f"{MAIN_OUTPUT_PATH}/logs/base_processing/{DUMP_TO_PROCESS}",
 )
 main_processing_executor.run()
@@ -114,7 +113,6 @@ stage1 = K3sPipelineExecutor(
     memory_request="1Gi",
     workers=10,
     namespace="default",
-    image="alpine:latest",
     logging_dir=f"{LOGS_FOLDER}/signatures",
     depends=main_processing_executor,
 )
@@ -136,7 +134,6 @@ stage2 = K3sPipelineExecutor(
     memory_request="1Gi",
     workers=10,
     namespace="default",
-    image="alpine:latest",
     depends=stage1,
 )
 
@@ -156,7 +153,6 @@ stage3 = K3sPipelineExecutor(
     memory_request="1Gi",
     workers=10,
     namespace="default",
-    image="alpine:latest",
     depends=stage2,
 )
 
@@ -178,7 +174,6 @@ stage4 = K3sPipelineExecutor(
     memory_request="1Gi",
     workers=10,
     namespace="default",
-    image="alpine:latest",
     depends=stage3,
 )
 
