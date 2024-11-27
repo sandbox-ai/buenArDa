@@ -140,7 +140,7 @@ stage2 = K3sPipelineExecutor(
     memory_request="1Gi",
     workers=10,
     namespace="default",
-    image="your-docker-image:tag",
+    image="alpine:latest",
     depends=stage1,
 )
 
