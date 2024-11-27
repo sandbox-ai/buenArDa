@@ -23,6 +23,15 @@ def cleanup_handler(signum, _frame):
     logger.warning(f"Received signal {signum} ({signame}). Cleaning up and exiting...")
     sys.exit(15)
 
+def launch_pickled_pipeline(pickle_path):
+    """Load and run a pickled pipeline executor
+    
+    Args:
+        pickle_path: Path to the pickled executor file
+    """
+    with open(pickle_path, 'rb') as f:
+        executor = dill.load(f)
+    executor.run()
 
 class K3sPipelineExecutor(PipelineExecutor):
     """Execute a pipeline on a k3s cluster
@@ -91,62 +100,57 @@ class K3sPipelineExecutor(PipelineExecutor):
             self.k8s_core_api = client.CoreV1Api()
 
     def run(self):
+        """Run the pipeline either inside a k3s pod or launch k3s jobs"""
         if "K3S_TASK_ID" in os.environ:
-            # We're inside a k3s pod
+            # We're inside a k3s pod, handle task distribution
             task_id = int(os.environ["K3S_TASK_ID"])
-            with self.logging_dir.open("ranks_to_run.json", "r") as ranks_to_run_file:
-                all_ranks = json.load(ranks_to_run_file)
             
-            ranks_to_run_range = (task_id * self.tasks_per_job, (task_id + 1) * self.tasks_per_job)
-            if ranks_to_run_range[0] >= len(all_ranks):
+            # Load the ranks to run
+            with self.logging_dir.open("ranks_to_run.json", "r") as ranks_file:
+                all_ranks = json.load(ranks_file)
+
+            # Calculate rank range for this task
+            ranks_range = (task_id * self.tasks_per_job, (task_id + 1) * self.tasks_per_job)
+            
+            if ranks_range[0] >= len(all_ranks):
                 return
 
-            for rank_to_run in range(*ranks_to_run_range):
-                if rank_to_run >= len(all_ranks):
+            # Handle cleanup signals
+            for sig in (signal.SIGTERM, signal.SIGINT):
+                signal.signal(sig, cleanup_handler)
+
+            # Run assigned ranks
+            for rank_idx in range(*ranks_range):
+                if rank_idx >= len(all_ranks):
                     break
-                rank = all_ranks[rank_to_run]
+                rank = all_ranks[rank_idx]
                 self._run_for_rank(rank)
+
         else:
+            # We're outside k3s, launch the job
             self.launch_job()
 
     def launch_job(self):
+        # Get incomplete ranks
         ranks_to_run = self.get_incomplete_ranks()
-        if len(ranks_to_run) == 0:
-            logger.info(f"Skipping launch of {self.job_name} as all {self.tasks} tasks have been completed.")
+        if not ranks_to_run:
+            logger.info(f"All {self.tasks} tasks completed, skipping {self.job_name}")
             self.job_id = -1
             return
-
-        # Create a simplified state dict instead of deepcopy
-        executor_state = {
-            'pipeline': self.pipeline,
-            'tasks': self.tasks,
-            'cpu_request': self.cpu_request,
-            'memory_request': self.memory_request,
-            'workers': self.workers,
-            'tasks_per_job': self.tasks_per_job,
-            'job_name': self.job_name,
-            'namespace': self.namespace,
-            'image': self.image,
-            'env_vars': self.env_vars,
-            'depends': self.depends,
-            'depends_job_id': self.depends_job_id,
-            'logging_dir': self.logging_dir,
-            'skip_completed': self.skip_completed
-        }
+    
+        # Save ranks to run
+        with self.logging_dir.open("ranks_to_run.json", "w") as f:
+            json.dump(ranks_to_run, f)
+    
+        # Calculate number of k3s jobs needed
+        num_jobs = -(-len(ranks_to_run) // self.tasks_per_job)  # Ceiling division
         
-        # Save executor state
-        with self.logging_dir.open("executor.pik", "wb") as executor_f:
-            dill.dump(executor_state, executor_f, fmode=CONTENTS_FMODE)
-        
-        with self.logging_dir.open("ranks_to_run.json", "w") as ranks_to_run_file:
-            json.dump(ranks_to_run, ranks_to_run_file)
-
-        # Initialize k8s clients
+        # Initialize k8s client
         self._init_k8s_clients()
-
-        # Create k3s job
-        parallelism = self.workers if self.workers > 0 else len(ranks_to_run)
-        job = self.create_k3s_job_object(parallelism, len(ranks_to_run))
+        
+        # Create job with proper parallelism
+        parallelism = min(self.workers, num_jobs) if self.workers > 0 else num_jobs
+        job = self.create_k3s_job_object(parallelism, num_jobs)
         
         try:
             api_response = self.k8s_batch_api.create_namespaced_job(
@@ -154,17 +158,21 @@ class K3sPipelineExecutor(PipelineExecutor):
                 namespace=self.namespace
             )
             self.job_id = api_response.metadata.name
-            logger.info(f"K3s job {self.job_id} created successfully")
+            logger.info(f"Created k3s job {self.job_id} with {num_jobs} tasks")
         except ApiException as e:
-            logger.error(f"Exception when creating k3s job: {e}")
+            logger.error(f"Failed to create k3s job: {e}")
             raise
 
     def create_k3s_job_object(self, parallelism: int, completions: int):
         container = client.V1Container(
             name=self.job_name,
             image=self.image,
-            command=["bash", "-c"],
-            args=["pip install -e .[all] && python -c 'from datatrove.executor import launch_pickled_pipeline; launch_pickled_pipeline()'"],
+            command=["python", "-m"],
+            args=[
+                "datatrove.executor.k3s", 
+                "launch_pickled_pipeline",
+                f"{self.logging_dir.resolve_paths('executor.pik')}"
+            ],
             resources=client.V1ResourceRequirements(
                 requests={
                     "cpu": self.cpu_request,
@@ -173,7 +181,10 @@ class K3sPipelineExecutor(PipelineExecutor):
             ),
             env=[
                 client.V1EnvVar(name=k, value=v)
-                for k, v in self.env_vars.items()
+                for k, v in {
+                    **self.env_vars,
+                    "K3S_TASK_ID": "$(JOB_COMPLETION_INDEX)"  # Add task ID env var
+                }.items()
             ]
         )
 
