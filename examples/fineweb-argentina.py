@@ -3,7 +3,7 @@ This file contains the code used to process and create the
 FineWeb dataset for Argentina (https://huggingface.co/datasets/HuggingFaceFW/fineweb)
 """
 
-from datatrove.executor.slurm import SlurmPipelineExecutor
+from datatrove.executor.k3s import K3sPipelineExecutor  # Change import
 from datatrove.pipeline.dedup import MinhashDedupCluster, MinhashDedupFilter, MinhashDedupSignature
 from datatrove.pipeline.dedup.minhash import MinhashConfig, MinhashDedupBuckets
 from datatrove.pipeline.extractors import Trafilatura
@@ -30,8 +30,8 @@ DUMP_TO_PROCESS = "CC-MAIN-2023-50"  # example
 MAIN_OUTPUT_PATH = "./data/argentina"
 FILTERING_OUTPUT_PATH = f"{MAIN_OUTPUT_PATH}/base_processing"
 
-main_processing_executor = SlurmPipelineExecutor(
-    job_name=f"cc_{DUMP_TO_PROCESS}_argentina",
+main_processing_executor = K3sPipelineExecutor(
+    job_name=f"cc-{DUMP_TO_PROCESS}-argentina",  # Modified to be k8s compliant
     pipeline=[
         WarcReader(
             f"./data/commoncrawl/{DUMP_TO_PROCESS}/segments/",
@@ -64,13 +64,16 @@ main_processing_executor = SlurmPipelineExecutor(
         JsonlWriter(f"{FILTERING_OUTPUT_PATH}/output/{DUMP_TO_PROCESS}"),
     ],
     tasks=400,
-    time="10:00:00",
+    cpu_request="1",  # Replace time with CPU request
+    memory_request="1Gi",  # Replace mem_per_cpu_gb with memory request
+    workers=10,  # Control parallel jobs
+    namespace="default",
+    image="your-docker-image:tag",  # Add required container image
     logging_dir=f"{MAIN_OUTPUT_PATH}/logs/base_processing/{DUMP_TO_PROCESS}",
-    slurm_logs_folder=f"./logs/base_processing/{DUMP_TO_PROCESS}/slurm_logs",  # must be local
-    randomize_start_duration=180,  # don't hit the bucket all at once with the list requests
-    mem_per_cpu_gb=1,
-    partition="fineweb",
-    #srun_args = {'display':'fineweb'}
+    # Remove SLURM-specific parameters:
+    # - slurm_logs_folder
+    # - partition
+    # - srun_args
 )
 main_processing_executor.run()
 
@@ -102,8 +105,8 @@ INPUT_READER = JsonlReader(
 )  # this is the output from the first part
 
 # stage 1 computes minhash signatures for each task (each task gets a set of files)
-stage1 = SlurmPipelineExecutor(
-    job_name=f"mh1_{DUMP_TO_PROCESS}_argentina",
+stage1 = K3sPipelineExecutor(
+    job_name=f"mh1-{DUMP_TO_PROCESS}-argentina",
     pipeline=[
         INPUT_READER,
         MinhashDedupSignature(
@@ -111,16 +114,16 @@ stage1 = SlurmPipelineExecutor(
         ),
     ],
     tasks=TOTAL_TASKS,
-    time="5:00:00",
-    partition="fineweb",
+    cpu_request="1",
+    memory_request="1Gi",
+    workers=10,
+    namespace="default",
+    image="your-docker-image:tag",
     logging_dir=f"{LOGS_FOLDER}/signatures",
-    slurm_logs_folder=f"{LOCAL_LOGS_FOLDER}/signatures/slurm_logs",
-    randomize_start_duration=180,
-    depends=main_processing_executor,  # only start after the first one completes
-    #srun_args={'display':'fineweb'}
+    depends=main_processing_executor,
 )
 
-stage2 = SlurmPipelineExecutor(
+stage2 = K3sPipelineExecutor(
     job_name=f"mh2_{DUMP_TO_PROCESS}_argentina",
     pipeline=[
         MinhashDedupBuckets(
@@ -133,16 +136,16 @@ stage2 = SlurmPipelineExecutor(
     # workers per bucket
     randomize_start_duration=180,
     logging_dir=f"{LOGS_FOLDER}/buckets",
-    partition="fineweb",
-    time="02:00:00",
-    mem_per_cpu_gb=1,
-    cpus_per_task=1,  # you can add run more (smaller) tasks if you do not have a lot of memory
+    cpu_request="1",
+    memory_request="1Gi",
+    workers=10,
+    namespace="default",
+    image="your-docker-image:tag",
     depends=stage1,
-    #srun_args={'display':'fineweb'}
 )
 
 
-stage3 = SlurmPipelineExecutor(
+stage3 = K3sPipelineExecutor(
     job_name=f"mh3_{DUMP_TO_PROCESS}_argentina",
     pipeline=[
         MinhashDedupCluster(
@@ -153,16 +156,16 @@ stage3 = SlurmPipelineExecutor(
     ],
     tasks=1,  # this step runs on a single task
     logging_dir=f"{LOGS_FOLDER}/clustering",
-    partition="fineweb",
-    time="30:00:00",  # and can also be quite slow. Usually not this slow though
-    mem_per_cpu_gb=1,
-    cpus_per_task=1,  # if you dedup a full dump, you do need a lot of memory for this one
+    cpu_request="1",
+    memory_request="1Gi",
+    workers=10,
+    namespace="default",
+    image="your-docker-image:tag",
     depends=stage2,
-    #srun_args={'display':'fineweb'}
 )
 
 
-stage4 = SlurmPipelineExecutor(
+stage4 = K3sPipelineExecutor(
     job_name=f"mh4_{DUMP_TO_PROCESS}_argentina",
     pipeline=[
         INPUT_READER,
@@ -175,11 +178,12 @@ stage4 = SlurmPipelineExecutor(
     ],
     tasks=TOTAL_TASKS,
     logging_dir=f"{LOGS_FOLDER}/filtering",
-    partition="fineweb",
-    time="5:00:00",
-    mem_per_cpu_gb=1,
+    cpu_request="1",
+    memory_request="1Gi",
+    workers=10,
+    namespace="default",
+    image="your-docker-image:tag",
     depends=stage3,
-    #srun_args={'display':'fineweb'}
 )
 
 # launch dedup pipelines

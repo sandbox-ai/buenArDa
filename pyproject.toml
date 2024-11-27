@@ -30,6 +30,7 @@ dependencies = [
     "multiprocess",
     "numpy>=1.25.0,<2.0.0",
     "tqdm",
+    "kubernetes",
 ]
 
 [project.optional-dependencies]
