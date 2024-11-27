@@ -54,7 +54,7 @@ class K3sPipelineExecutor(PipelineExecutor):
         workers: int = -1,
         job_name: str = "data-processing",
         namespace: str = "default",
-        image: str = "python:3.9",
+        image: str = "marianbasti/buenarda:latest",
         env_vars: dict = None,
         depends: K3sPipelineExecutor | None = None,
         depends_job_id: str | None = None,
