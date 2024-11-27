@@ -128,7 +128,6 @@ stage2 = K3sPipelineExecutor(
     ],
     tasks=minhash_config.num_buckets * 50,  # the code supports parallelizing each bucket. here we run 50
     # workers per bucket
-    randomize_start_duration=180,
     logging_dir=f"{LOGS_FOLDER}/buckets",
     cpu_request="1",
     memory_request="1Gi",
