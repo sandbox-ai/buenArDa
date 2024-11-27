@@ -31,7 +31,7 @@ MAIN_OUTPUT_PATH = "./data/argentina"
 FILTERING_OUTPUT_PATH = f"{MAIN_OUTPUT_PATH}/base_processing"
 
 main_processing_executor = K3sPipelineExecutor(
-    job_name=f"cc-{DUMP_TO_PROCESS}-argentina",  # Modified to be k8s compliant
+    job_name=f"cc-{DUMP_TO_PROCESS.lower()}-argentina",  # Modified to be k8s compliant (lowercase)
     pipeline=[
         WarcReader(
             f"./data/commoncrawl/{DUMP_TO_PROCESS}/segments/",
