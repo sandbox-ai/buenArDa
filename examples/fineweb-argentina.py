@@ -68,12 +68,8 @@ main_processing_executor = K3sPipelineExecutor(
     memory_request="1Gi",  # Replace mem_per_cpu_gb with memory request
     workers=10,  # Control parallel jobs
     namespace="default",
-    image="your-docker-image:tag",  # Add required container image
+    image="alpine:latest",  # Add required container image
     logging_dir=f"{MAIN_OUTPUT_PATH}/logs/base_processing/{DUMP_TO_PROCESS}",
-    # Remove SLURM-specific parameters:
-    # - slurm_logs_folder
-    # - partition
-    # - srun_args
 )
 main_processing_executor.run()
 
@@ -118,7 +114,7 @@ stage1 = K3sPipelineExecutor(
     memory_request="1Gi",
     workers=10,
     namespace="default",
-    image="your-docker-image:tag",
+    image="alpine:latest",
     logging_dir=f"{LOGS_FOLDER}/signatures",
     depends=main_processing_executor,
 )
@@ -160,7 +156,7 @@ stage3 = K3sPipelineExecutor(
     memory_request="1Gi",
     workers=10,
     namespace="default",
-    image="your-docker-image:tag",
+    image="alpine:latest",
     depends=stage2,
 )
 
@@ -182,7 +178,7 @@ stage4 = K3sPipelineExecutor(
     memory_request="1Gi",
     workers=10,
     namespace="default",
-    image="your-docker-image:tag",
+    image="alpine:latest",
     depends=stage3,
 )
 
