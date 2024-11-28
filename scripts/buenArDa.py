@@ -34,7 +34,7 @@ main_processing_executor = K3sPipelineExecutor(
     job_name=f"cc-{DUMP_TO_PROCESS.lower()}-argentina",  # Modified to be k8s compliant (lowercase)
     pipeline=[
         WarcReader(
-            f"./data/commoncrawl/{DUMP_TO_PROCESS}/segments/",
+            f"s3://commoncrawl/crawl-data/{DUMP_TO_PROCESS}/segments/",
             glob_pattern="*/warc/*",  # we want the warc files
             default_metadata={"dump": DUMP_TO_PROCESS},
         ),
