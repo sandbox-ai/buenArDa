@@ -101,7 +101,7 @@ INPUT_READER = JsonlReader(
 
 # stage 1 computes minhash signatures for each task (each task gets a set of files)
 stage1 = K3sPipelineExecutor(
-    job_name=f"mh1-{DUMP_TO_PROCESS}-argentina",
+    job_name=f"mh1-{DUMP_TO_PROCESS.lower()}-argentina",
     pipeline=[
         INPUT_READER,
         MinhashDedupSignature(
@@ -118,7 +118,7 @@ stage1 = K3sPipelineExecutor(
 )
 
 stage2 = K3sPipelineExecutor(
-    job_name=f"mh2_{DUMP_TO_PROCESS}_argentina",
+    job_name=f"mh2_{DUMP_TO_PROCESS.lower()}_argentina",
     pipeline=[
         MinhashDedupBuckets(
             input_folder=f"{MINHASH_BASE_PATH}/{DUMP_TO_PROCESS}/signatures",
@@ -138,7 +138,7 @@ stage2 = K3sPipelineExecutor(
 
 
 stage3 = K3sPipelineExecutor(
-    job_name=f"mh3_{DUMP_TO_PROCESS}_argentina",
+    job_name=f"mh3_{DUMP_TO_PROCESS.lower()}_argentina",
     pipeline=[
         MinhashDedupCluster(
             input_folder=f"{MINHASH_BASE_PATH}/{DUMP_TO_PROCESS}/buckets",
@@ -157,7 +157,7 @@ stage3 = K3sPipelineExecutor(
 
 
 stage4 = K3sPipelineExecutor(
-    job_name=f"mh4_{DUMP_TO_PROCESS}_argentina",
+    job_name=f"mh4_{DUMP_TO_PROCESS.lower()}_argentina",
     pipeline=[
         INPUT_READER,
         TokensCounter(),  # you can remove this one, it's just a nice way to know how many tokens we have
