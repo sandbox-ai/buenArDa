@@ -4,6 +4,8 @@ DataTrove is a library to process, filter and deduplicate text data at a very la
 
 DataTrove processing pipelines are platform-agnostic, running out of the box locally or on a slurm cluster. Its (relatively) low memory usage and multiple step design makes it ideal for large workloads, such as to process an LLM's training data.
 
+This fork introduces the possibility to run the jobs on a k8s cluster.
+
 Local, remote and other file systems are supported through [fsspec](https://filesystem-spec.readthedocs.io/en/latest/).
 
 ## Table of contents
@@ -20,6 +22,7 @@ Local, remote and other file systems are supported through [fsspec](https://file
 - [Executors](#executors)
   * [LocalPipelineExecutor](#localpipelineexecutor)
   * [SlurmPipelineExecutor](#slurmpipelineexecutor)
+  * [K3sPipelineExecutor](#k3spipelineexecutor)
 - [Logging](#logging)
 - [DataFolder / paths](#datafolder--paths)
 - [Practical guides](#practical-guides)
@@ -51,13 +54,7 @@ Available flavours (combine them with `,` i.e. `[processing,s3]`):
 - `cli` for command line tools: `pip install datatrove[cli]`
 
 ## Quickstart examples
-You can check the following [examples](examples):
-- [fineweb.py](examples/fineweb.py) full reproduction of the [FineWeb dataset](https://huggingface.co/datasets/HuggingFaceFW/fineweb)
-- [process_common_crawl_dump.py](examples/process_common_crawl_dump.py) full pipeline to read commoncrawl warc files, extract their text content, filters and save the resulting data to s3. Runs on slurm
-- [tokenize_c4.py](examples/tokenize_c4.py) reads data directly from huggingface's hub to tokenize the english portion of the C4 dataset using the `gpt2` tokenizer
-- [minhash_deduplication.py](examples/minhash_deduplication.py) full pipeline to run minhash deduplication of text data
-- [sentence_deduplication.py](examples/sentence_deduplication.py) example to run sentence level exact deduplication
-- [exact_substrings.py](examples/exact_substrings.py) example to run ExactSubstr (requires [this repo](https://github.com/google-research/deduplicate-text-datasets))
+You can replicate buenArDa by running [buenArDa.py](scripts/buenArDa.py). You will need access to a kubernetes cluster.
 
 ## Terminology
 - `pipeline`: a list of processing steps to execute (read data, filter, write to disk, etc)
@@ -223,6 +220,43 @@ executor2 = SlurmPipelineExecutor(
 )
 # executor1.run()
 executor2.run() # this will actually launch executor1, as it is a dependency, so no need to launch it explicitly
+```
+</details>
+
+### K3sPipelineExecutor
+This executor will launch a pipeline on a Kubernetes (k8s) cluster, using k8s jobs to manage tasks.
+Options:
+- `tasks` total number of tasks to run. **required**
+- `cpu_request` CPU cores to request per pod (default: "1")
+- `memory_request` Memory to request per pod (default: "2Gi")
+- `workers` max number of concurrent pods (-1 for unlimited)
+- `job_name` k8s job name (default: "data-processing")
+- `namespace` k8s namespace (default: "default")
+- `image` container image to use (default: "marianbasti/buenarda:latest")
+- `env_vars` dictionary of environment variables
+- `depends` another K3sPipelineExecutor instance, which will be a dependency of this pipeline
+- `depends_job_id` alternatively, you can pass the job id of a dependency
+- `tasks_per_job` number of pipeline tasks per k8s job (default: 1)
+
+<details>
+  <summary>Example executor</summary>
+
+```python
+from datatrove.executor import K3sPipelineExecutor
+executor = K3sPipelineExecutor(
+    pipeline=[
+        ...
+    ],
+    job_name="my_k8s_job",
+    logging_dir="logs/k8s_job",
+    tasks=100,
+    cpu_request="2",
+    memory_request="4Gi",
+    workers=10,
+    namespace="my-namespace",
+    image="my-docker-image:latest"
+)
+executor.run()
 ```
 </details>
 
