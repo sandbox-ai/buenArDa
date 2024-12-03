@@ -1,81 +1,56 @@
 import requests
-import json
-
-# For parsing URLs:
 from urllib.parse import quote_plus
+import json
+from typing import List, Optional, Dict
+import logging
 
-# For parsing WARC records:
-from warcio.archiveiterator import ArchiveIterator
+def search_commoncrawl_index(
+    pattern: str,
+    index_name: str = 'CC-MAIN-2024-33',
+    server: str = 'http://index.commoncrawl.org/'
+) -> Optional[List[Dict]]:
+    """
+    Search the Common Crawl index for a URL pattern and return matching records.
+    
+    Args:
+        pattern: URL pattern to search for
+        index_name: Common Crawl index name (e.g., 'CC-MAIN-2024-33')
+        server: Common Crawl index server URL
+    
+    Returns:
+        List of dictionaries containing matching records or None if request fails
+    """
+    try:
+        encoded_url = quote_plus(pattern)
+        index_url = f'{server}{index_name}-index?url={encoded_url}&output=json'
+        
+        headers = {
+            'user-agent': 'cc-get-started/1.0 (Common Crawl Index Search Bot)'
+        }
+        
+        response = requests.get(index_url, headers=headers)
+        response.raise_for_status()
+        
+        # Parse JSONL response into list of dictionaries
+        records = [
+            json.loads(record) 
+            for record in response.text.strip().split('\n')
+            if record.strip()
+        ]
+        
+        logging.info(f"Found {len(records)} records matching pattern: {pattern}")
+        return records
 
-# The URL of the Common Crawl Index server
-#SERVER = 'http://index.commoncrawl.org/'
-
-# The Common Crawl index you want to query
-#INDEX_NAME = 'CC-MAIN-2024-33'      # Replace with the latest index name
-
-# The URL you want to look up in the Common Crawl index
-#target_url = 'commoncrawl.org/faq'  # Replace with your target URL
-
-# It’s advisable to use a descriptive User-Agent string when developing your own applications.
-# This practice aligns with the conventions outlined in RFC 7231. Let's use this simple one:
-myagent = 'cc-get-started/1.0 (Example data retrieval script; yourname@example.com)'
-
-# Function to search the Common Crawl Index
-def search_cc_index(url):
-    encoded_url = quote_plus(url)
-    index_url = f'{SERVER}{INDEX_NAME}-index?url={encoded_url}&output=json'
-    response = requests.get(index_url, headers={'user-agent': myagent})
-    print("Response from server:\r\n", response.text)
-    if response.status_code == 200:
-        records = response.text.strip().split('\n')
-        return [json.loads(record) for record in records]
-    else:
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Failed to search Common Crawl index: {str(e)}")
+        return None
+    except json.JSONDecodeError as e:
+        logging.error(f"Failed to parse response: {str(e)}")
         return None
 
-# Function to fetch content from Common Crawl
-def fetch_page_from_cc(records):
-    for record in records:
-        offset, length = int(record['offset']), int(record['length'])
-        s3_url = f'https://data.commoncrawl.org/{record["filename"]}'
-
-        # Define the byte range for the request
-        byte_range = f'bytes={offset}-{offset+length-1}'
-
-        # Send the HTTP GET request to the S3 URL with the specified byte range
-        response = requests.get(
-            s3_url,
-            headers={'user-agent': myagent, 'Range': byte_range},
-            stream=True
-        )
-
-        if response.status_code == 206:
-            # Use `stream=True` in the call to `requests.get()` to get a raw
-            # byte stream, because it's gzip compressed data
-
-            # Create an `ArchiveIterator` object directly from `response.raw`
-            # which handles the gzipped WARC content
-
-            stream = ArchiveIterator(response.raw)
-            for warc_record in stream:
-                if warc_record.rec_type == 'response':
-                    return warc_record.content_stream().read()
-        else:
-            print(f"Failed to fetch data: {response.status_code}")
-            return None
-
-    print("No valid WARC record found in the given records")
-    return None
-
-# Search the index for the target URL
-records = search_cc_index(target_url)
-if records:
-    print(f"Found {len(records)} records for {target_url}")
-
-    # Fetch the page content from the first record
-    content = fetch_page_from_cc(records)
-    if content:
-        print(f"Successfully fetched content for {target_url}")
-        # You can now process the 'content' variable as needed
-        # using something like Beautiful Soup, etc
-else:
-    print(f"No records found for {target_url}")
+# Example usage:
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    results = search_commoncrawl_index("commoncrawl.org/*")
+    if results:
+        print(json.dumps(results, indent=2))
