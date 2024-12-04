@@ -16,7 +16,7 @@ from datatrove.pipeline.filters import (
     URLFilter,
 )
 from datatrove.pipeline.formatters import PIIFormatter
-from datatrove.pipeline.readers import JsonlReader, WarcReader
+from datatrove.pipeline.readers import JsonlReader, CommonCrawlReader
 from datatrove.pipeline.tokens import TokensCounter
 from datatrove.pipeline.writers.jsonl import JsonlWriter
 from datatrove.utils.hashing import HashConfig
@@ -33,9 +33,10 @@ FILTERING_OUTPUT_PATH = f"{MAIN_OUTPUT_PATH}/base_processing"
 main_processing_executor = K3sPipelineExecutor(
     job_name=f"cc-{DUMP_TO_PROCESS.lower()}-argentina",  # Modified to be k8s compliant (lowercase)
     pipeline=[
-        WarcReader(
-            f"s3://commoncrawl/crawl-data/{DUMP_TO_PROCESS}/segments/",
-            glob_pattern="*/warc/*",  # we want the warc files
+        # Reemplazar por un reader que use el get_s3_range y search_commoncrawl_index
+        CommonCrawlReader(
+            data_folder='/tmp/',
+            url_pattern='*.ar',
             default_metadata={"dump": DUMP_TO_PROCESS},
         ),
         URLFilter(exclusion_writer=JsonlWriter(f"{FILTERING_OUTPUT_PATH}/removed/1_url/{DUMP_TO_PROCESS}")),
@@ -52,7 +53,7 @@ main_processing_executor = K3sPipelineExecutor(
             exclusion_writer=JsonlWriter(f"{FILTERING_OUTPUT_PATH}/removed/3_gopher_rep/{DUMP_TO_PROCESS}")
         ),
         GopherQualityFilter(
-            exclusion_writer=JsonlWriter(f"{FILTERING_OUTPUT_PATH}/removed/4_gopher_qual/{DUMP_TO_PROCESS}")
+            exclusion_writer=JsonlWriter(f"{FILTERING_OUTPUT_PATH}/removed/4_gopher_qual/{DUMP_TO_PROCESS}"), stop_words=["a", "ante", "bajo", "con", "contra", "de", "desde", "en","entre", "hacia", "hasta", "para", "por", "según", "sin", "sobre"]
         ),
         C4QualityFilter(
             filter_no_terminal_punct=False,
