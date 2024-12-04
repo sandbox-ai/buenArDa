@@ -1,5 +1,5 @@
-# DataTrove
-
+# buenArDa: Un buen Argentinian Dataset destilado de CommonCrawl
+## Un pipeline derivado de [Datatrove](https://github.com/huggingface/datatrove) para filtrar y regionalizar CommonCrawl 
 DataTrove is a library to process, filter and deduplicate text data at a very large scale. It provides a set of prebuilt commonly used processing blocks with a framework to easily add custom functionality.
 
 DataTrove processing pipelines are platform-agnostic, running out of the box locally or on a slurm cluster. Its (relatively) low memory usage and multiple step design makes it ideal for large workloads, such as to process an LLM's training data.

@@ -31,6 +31,10 @@ dependencies = [
     "numpy>=1.25.0,<2.0.0",
     "tqdm",
     "kubernetes",
+    "warcio",
+    "faust-cchardet",
+    "python-magic",
+    "orjson",
 ]
 
 [project.optional-dependencies]
