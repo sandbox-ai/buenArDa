@@ -1,4 +1,3 @@
-
 #!/bin/bash
 
 set -e
@@ -43,10 +42,36 @@ spec:
   resources:
     requests:
       storage: ${STORAGE_SIZE}
+  storageClassName: local-path
 EOF
     
-    echo "Waiting for PVC to be bound..."
-    kubectl wait --for=condition=bound pvc/crawler-data-pvc --timeout=60s
+    # Create a test pod to validate PVC
+    echo "Creating test pod to validate PVC..."
+    cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pvc-test
+  namespace: ${NAMESPACE}
+spec:
+  containers:
+  - name: pvc-test
+    image: busybox
+    command: ['sh', '-c', 'echo "Testing PVC" > /test/test.txt && sleep 5']
+    volumeMounts:
+    - name: crawler-data
+      mountPath: /test
+  volumes:
+  - name: crawler-data
+    persistentVolumeClaim:
+      claimName: crawler-data-pvc
+  restartPolicy: Never
+EOF
+
+    echo "Waiting for test pod to complete..."
+    kubectl wait --for=condition=ready pod/pvc-test --timeout=30s || true
+    kubectl wait --for=condition=complete pod/pvc-test --timeout=30s || true
+    kubectl delete pod pvc-test --ignore-not-found
 }
 
 # Deploy crawler jobs
