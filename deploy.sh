@@ -8,16 +8,18 @@ WORKERS_PER_INDEX=3
 STORAGE_SIZE="100Gi"
 NAMESPACE="default"
 NFS_PATH="/mnt/buenarda"
+TEST_MODE=""
 
-while getopts "i:" opt; do
+while getopts "i:t" opt; do
   case $opt in
     i) NFS_SERVER="$OPTARG";;
-    *) echo "Usage: $0 -i <nfs_server_ip>" >&2; exit 1;;
+    t) TEST_MODE="--test";;
+    *) echo "Usage: $0 -i <nfs_server_ip> [-t]" >&2; exit 1;;
   esac
 done
 
 if [ -z "$NFS_SERVER" ]; then
-    echo "Error: NFS server IP required. Usage: $0 -i <nfs_server_ip>" >&2
+    echo "Error: NFS server IP required. Usage: $0 -i <nfs_server_ip> [-t]" >&2
     exit 1
 fi
 
@@ -128,12 +130,14 @@ EOF
 # Deploy crawler jobs
 deploy_jobs() {
     echo "Deploying crawler jobs..."
-    # Add PYTHONPATH to include project root
+    if [ -n "$TEST_MODE" ]; then
+        echo "Running in test mode with single job"
+    fi
+    
     SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
     export PYTHONPATH="${SCRIPT_DIR}:${PYTHONPATH}"
     
-    # Run with module notation
-    python3 -m scripts.buenarda_job_controller --workers ${WORKERS_PER_INDEX}
+    python3 -m scripts.buenarda_job_controller --workers ${WORKERS_PER_INDEX} ${TEST_MODE}
 }
 
 # Main deployment flow

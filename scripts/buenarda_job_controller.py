@@ -78,7 +78,7 @@ def monitor_jobs(batch_v1, jobs: Dict[str, dict]):
                 logger.error(f"Error monitoring job {job_name}: {e}")
         time.sleep(30)
 
-def main(workers_per_index=1):
+def main(workers_per_index=1, test_mode=False):
     if workers_per_index < 1:
         raise ValueError("workers_per_index must be at least 1")
 
@@ -92,6 +92,12 @@ def main(workers_per_index=1):
             raise RuntimeError("No CommonCrawl indexes found")
             
         active_jobs = {}
+        
+        # In test mode, only use the first index and one worker
+        if test_mode:
+            indexes = indexes[:1]
+            workers_per_index = 1
+            logger.info("Running in test mode with single job")
         
         for index in indexes:
             for worker_id in range(workers_per_index):
@@ -126,5 +132,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--workers', type=int, default=1,
                       help='Number of workers per index')
+    parser.add_argument('--test', action='store_true',
+                      help='Run in test mode with single job')
     args = parser.parse_args()
-    main(args.workers)
+    main(args.workers, args.test)
