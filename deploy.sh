@@ -7,6 +7,19 @@ DOCKER_IMAGE="marianbasti/buenarda-worker:latest"
 WORKERS_PER_INDEX=3
 STORAGE_SIZE="100Gi"
 NAMESPACE="default"
+NFS_PATH="/mnt/buenarda"
+
+while getopts "i:" opt; do
+  case $opt in
+    i) NFS_SERVER="$OPTARG";;
+    *) echo "Usage: $0 -i <nfs_server_ip>" >&2; exit 1;;
+  esac
+done
+
+if [ -z "$NFS_SERVER" ]; then
+    echo "Error: NFS server IP required. Usage: $0 -i <nfs_server_ip>" >&2
+    exit 1
+fi
 
 # Check prerequisites
 check_command() {
@@ -38,7 +51,6 @@ get_node_name() {
 
 create_persistent_volume() {
     echo "Creating persistent volume..."
-    NODE_NAME=$(get_node_name)
     cat <<EOF | kubectl apply -f -
 apiVersion: v1
 kind: PersistentVolume
@@ -50,46 +62,49 @@ spec:
   accessModes:
     - ReadWriteMany
   persistentVolumeReclaimPolicy: Retain
-  storageClassName: local-path
-  local:
-    path: ./data
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-      - matchExpressions:
-        - key: kubernetes.io/hostname
-          operator: In
-          values:
-          - ${NODE_NAME}
+  storageClassName: nfs-storage
+  nfs:
+    server: YOUR_NFS_SERVER_IP
+    path: /mnt/nfs_share
 EOF
-
-    mkdir -p ./data
 }
 
-# Create persistent volume and claim
-create_storage_with_pod() {
-    # Create test pod first
+setup_nfs_storage_class() {
+    echo "Creating NFS StorageClass..."
+    cat <<EOF | kubectl apply -f -
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-storage
+provisioner: kubernetes.io/nfs
+parameters:
+  server: ${NFS_SERVER}
+  path: ${NFS_PATH}
+EOF
+}
+
+create_persistent_volume() {
+    echo "Creating persistent volume..."
     cat <<EOF | kubectl apply -f -
 apiVersion: v1
-kind: Pod
+kind: PersistentVolume
 metadata:
-  name: volume-test
-  namespace: ${NAMESPACE}
+  name: crawler-data-pv
 spec:
-  containers:
-  - name: volume-test
-    image: busybox
-    command: ["sleep", "infinity"]
-    volumeMounts:
-    - name: data
-      mountPath: /data
-  volumes:
-  - name: data
-    persistentVolumeClaim:
-      claimName: crawler-data-pvc
+  capacity:
+    storage: ${STORAGE_SIZE}
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nfs-storage
+  nfs:
+    server: ${NFS_SERVER}
+    path: ${NFS_PATH}
 EOF
+}
 
-    # Now create PVC
+create_storage() {
+    echo "Creating PVC..."
     cat <<EOF | kubectl apply -f -
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -102,14 +117,10 @@ spec:
   resources:
     requests:
       storage: ${STORAGE_SIZE}
-  storageClassName: local-path
+  storageClassName: nfs-storage
 EOF
 
-    # Wait for binding
     kubectl wait --for=condition=bound pvc/crawler-data-pvc -n ${NAMESPACE} --timeout=30s
-    
-    # Clean up test pod
-    kubectl delete pod volume-test -n ${NAMESPACE}
 }
 
 # Deploy crawler jobs
@@ -132,7 +143,7 @@ main() {
     # Create namespace if it doesn't exist
     kubectl create namespace ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
     create_persistent_volume
-    create_storage_with_pod
+    create_storage
     deploy_jobs
     
     echo "Deployment completed successfully!"

@@ -10,12 +10,32 @@ buenArDa es un proyecto destinado a crear un conjunto de datos argentinos de alt
 - Descomprime y guarda el contenido localmente
 - Soporta procesamiento incremental para evitar datos duplicados
 
+## Prerequisitos
+
+### Almacenamiento (sólo para kubernetes)
+
+1. Instalá server NFS en el nodo de control, creando la carpeta de salida:
+```sh
+sudo apt-get update
+sudo apt-get install -y nfs-kernel-server
+sudo mkdir -p /mnt/buenarda
+sudo chown nobody:nogroup /mnt/buenarda
+sudo chmod 777 /mnt/buenarda
+
+echo "/mnt/buenarda *(rw,sync,no_subtree_check,no_root_squash)" | sudo tee -a /etc/exports
+sudo exportfs -ra
+```
+2. Instalá NFS en los workers:
+```sh
+sudo apt-get install -y nfs-common
+```
+
 ## Instalación
 
 Para comenzar con buenArDa, cloná el repositorio e instalá las dependencias requeridas:
 
 ```sh
-git clone https://github.com/yourusername/buenArDa.git
+git clone https://github.com/sandbox-ai/buenArDa
 cd buenArDa
 pip install -r requirements.txt
 ```
@@ -29,17 +49,17 @@ Para replicar buenArDa, podés correrlo localmente o desplegarlo en un clúster 
 Para crear buenArDa localmente, usá el script `scripts/buenArDa.py`:
 
 ```sh
-python3 -m scripts.buenArDa --output 
+python3 -m scripts.buenArDa --output data.json
 ```
 
 Este script se encargará de iniciar el proceso de extracción, descarga y procesamiento de los datos.
 
 ### Despliegue en Kubernetes
 
-Si preferís desplegar buenArDa en un clúster de Kubernetes, utiliusáza el script `deploy.sh`:
+Si preferís desplegar buenArDa en un clúster de Kubernetes, usá el script `deploy.sh`:
 
 ```sh
-./deploy.sh
+./deploy.sh -i $(hostname -I | awk '{print $1}')
 ```
 
 Este script creará los recursos necesarios en tu clúster de Kubernetes y ejecutará los procesos de buenArDa en contenedores.
