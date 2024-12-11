@@ -37,6 +37,10 @@ Para comenzar con buenArDa, cloná el repositorio e instalá las dependencias re
 ```sh
 git clone https://github.com/sandbox-ai/buenArDa
 cd buenArDa
+# Crear virtual environment, recomendado
+python3 -m venv ./.venv
+source .venv/bin/activate
+
 pip install -r requirements.txt
 ```
 
