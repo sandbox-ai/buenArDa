@@ -9,17 +9,19 @@ STORAGE_SIZE="100Gi"
 NAMESPACE="default"
 NFS_PATH="/mnt/buenarda"
 TEST_MODE=""
+PATTERN="*.ar"
 
-while getopts "i:t" opt; do
+while getopts "i:tp:" opt; do
   case $opt in
     i) NFS_SERVER="$OPTARG";;
     t) TEST_MODE="--test";;
-    *) echo "Usage: $0 -i <nfs_server_ip> [-t]" >&2; exit 1;;
+    p) PATTERN="$OPTARG";;
+    *) echo "Usage: $0 -i <nfs_server_ip> [-t] [-p pattern]" >&2; exit 1;;
   esac
 done
 
 if [ -z "$NFS_SERVER" ]; then
-    echo "Error: NFS server IP required. Usage: $0 -i <nfs_server_ip> [-t]" >&2
+    echo "Error: NFS server IP required. Usage: $0 -i <nfs_server_ip> [-t] [-p pattern]" >&2
     exit 1
 fi
 
@@ -137,7 +139,7 @@ deploy_jobs() {
     SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
     export PYTHONPATH="${SCRIPT_DIR}:${PYTHONPATH}"
     
-    python3 -m scripts.buenarda_job_controller --workers ${WORKERS_PER_INDEX} ${TEST_MODE}
+    python3 -m scripts.buenarda_job_controller --workers ${WORKERS_PER_INDEX} ${TEST_MODE} --pattern "${PATTERN}"
 }
 
 # Main deployment flow

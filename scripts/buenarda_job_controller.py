@@ -11,7 +11,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def create_job_template(index_id, output_path, worker_id, total_workers):
+def create_job_template(index_id, output_path, worker_id, total_workers, pattern):
     return {
         "apiVersion": "batch/v1",
         "kind": "Job",
@@ -28,6 +28,7 @@ def create_job_template(index_id, output_path, worker_id, total_workers):
                             "python", "-m", "scripts.buenarda_worker",
                             "--index", index_id.lower(),
                             "--output", output_path,
+                            "--pattern", pattern,
                             "--worker-id", str(worker_id),
                             "--total-workers", str(total_workers)
                         ],
@@ -79,7 +80,7 @@ def monitor_jobs(batch_v1, jobs: Dict[str, dict]):
                 logger.error(f"Error monitoring job {job_name}: {e}")
         time.sleep(30)
 
-def main(workers_per_index=1, test_mode=False):
+def main(workers_per_index=1, test_mode=False, pattern="*.ar"):
     if workers_per_index < 1:
         raise ValueError("workers_per_index must be at least 1")
 
@@ -106,7 +107,8 @@ def main(workers_per_index=1, test_mode=False):
                     index,
                     f"/data/crawl_data_{index.replace('/', '-')}_{worker_id}.jsonl",
                     worker_id,
-                    workers_per_index
+                    workers_per_index,
+                    pattern
                 )
                 try:
                     response = batch_v1.create_namespaced_job(
@@ -135,5 +137,7 @@ if __name__ == "__main__":
                       help='Number of workers per index')
     parser.add_argument('--test', action='store_true',
                       help='Run in test mode with single job')
+    parser.add_argument('--pattern', default="*.ar",
+                      help='URL pattern to search for (default: *.ar)')
     args = parser.parse_args()
-    main(args.workers, args.test)
+    main(args.workers, args.test, args.pattern)

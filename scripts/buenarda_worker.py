@@ -41,7 +41,7 @@ def handle_shutdown(signum, frame):
     logger.info("Received shutdown signal, cleaning up...")
     sys.exit(0)
 
-def process_index(index_name, output_file, worker_id=0, total_workers=1):
+def process_index(index_name, output_file, pattern="*.ar", worker_id=0, total_workers=1):
     if not index_name or not output_file:
         raise ValueError("Invalid index_name or output_file")
 
@@ -50,7 +50,7 @@ def process_index(index_name, output_file, worker_id=0, total_workers=1):
     existing_urls = load_existing_urls(output_file)
     
     try:
-        results = search_commoncrawl_index("*.ar", index_name=index_name)
+        results = search_commoncrawl_index(pattern, index_name=index_name)
         logger.info(f"Found {len(results)} matching results in {index_name}")
         
         worker_results = [r for i, r in enumerate(results) if i % total_workers == worker_id]
@@ -88,11 +88,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--index', required=True, help='CommonCrawl index to process')
     parser.add_argument('--output', required=True, help='Output file path')
+    parser.add_argument('--pattern', default="*.ar", help='URL pattern to search for (default: *.ar)')
     parser.add_argument('--worker-id', type=int, default=0, help='Worker ID for chunking')
     parser.add_argument('--total-workers', type=int, default=1, help='Total number of workers')
     args = parser.parse_args()
     
-    process_index(args.index, args.output, args.worker_id, args.total_workers)
+    process_index(args.index, args.output, args.pattern, args.worker_id, args.total_workers)
 
 if __name__ == "__main__":
     main()

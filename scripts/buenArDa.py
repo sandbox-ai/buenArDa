@@ -20,7 +20,7 @@ def append_content(output_file, url, content):
         json_line = json.dumps({'url': url, 'content': content})
         f.write(json_line + '\n')
 
-def main(output_file):
+def main(output_file, pattern):
     # Load existing URLs to skip
     existing_urls = load_existing_urls(output_file)
 
@@ -35,7 +35,7 @@ def main(output_file):
     # Process each index
     for index in indexes:
         print(f"Processing index: {index}")
-        results = search_commoncrawl_index("*.ar", index_name=index)
+        results = search_commoncrawl_index(pattern, index_name=index)
         print(f"Found {len(results)} matching results in {index}")
         
         # Process results incrementally
@@ -59,7 +59,8 @@ def main(output_file):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process CommonCrawl indexes.')
     parser.add_argument('--output_file', type=str, required=True, help='Output file to save the data')
+    parser.add_argument('--pattern', type=str, default="*.ar", help='URL pattern to search for (default: *.ar)')
 
     args = parser.parse_args()
-    main(args.output_file)
+    main(args.output_file, args.pattern)
 

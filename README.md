@@ -58,13 +58,18 @@ python3 -m scripts.buenArDa --output data.json
 
 Este script se encargará de iniciar el proceso de extracción, descarga y procesamiento de los datos.
 
+El argumento --pattern es opcional y por defecto es "*.ar", para filtrar por localización en Argentina.
+
 ### Despliegue en Kubernetes
 
 Si preferís desplegar buenArDa en un clúster de Kubernetes, usá el script `deploy.sh`:
 
 ```sh
-./deploy.sh -i $(hostname -I | awk '{print $1}')
+./deploy.sh -i $(hostname -I | awk '{print $1}') [-p pattern]
 ```
+- -i: IP del servidor NFS (requerido)
+- -p: Patrón de búsqueda de URLs (opcional, por defecto: "*.ar")
+- -t: Modo test (opcional, crea un solo trabajo para verificar que anda el environment de kubernetes)
 
 Este script creará los recursos necesarios en tu clúster de Kubernetes y ejecutará los procesos de buenArDa en contenedores.
 
