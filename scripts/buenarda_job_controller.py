@@ -24,8 +24,16 @@ def create_job_template(index_id, output_path, worker_id, total_workers, pattern
                     "containers": [{
                         "name": "crawler",
                         "image": "marianbasti/buenarda-worker:latest",
+                        "env": [
+                            {
+                                "name": "PYTHONPATH",
+                                "value": "/app"
+                            }
+                        ],
+                        "workingDir": "/app",
                         "args": [
-                            "python", "-m", "scripts.buenarda_worker",
+                            "python",
+                            "-m", "scripts.buenarda_worker",
                             "--index", index_id.lower(),
                             "--output", output_path,
                             "--pattern", pattern,
@@ -36,12 +44,6 @@ def create_job_template(index_id, output_path, worker_id, total_workers, pattern
                             "name": "data",
                             "mountPath": "/data"
                         }]
-                    }],
-                    "volumes": [{
-                        "name": "data",
-                        "persistentVolumeClaim": {
-                            "claimName": "crawler-data-pvc"
-                        }
                     }],
                     "restartPolicy": "Never"
                 }
