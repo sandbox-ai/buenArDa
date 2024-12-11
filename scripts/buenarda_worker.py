@@ -7,6 +7,7 @@ import logging
 from tenacity import retry, stop_after_attempt, wait_exponential
 import signal
 import sys
+import trafilatura
 
 logging.basicConfig(
     level=logging.INFO,
@@ -73,7 +74,7 @@ def process_index(index_name, output_file, pattern="*.ar", worker_id=0, total_wo
                     result['length']
                 )
                 if content:
-                    append_content(output_file, url, content)
+                    append_content(output_file, url, trafilatura.extract(content))
                     success_count += 1
                     if success_count % 100 == 0:
                         logger.info(f"Processed {success_count} URLs successfully")

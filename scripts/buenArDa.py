@@ -4,6 +4,7 @@ import argparse
 import requests
 from scripts.get_s3_range import read_s3_range
 from scripts.search_commoncrawl_index import search_commoncrawl_index, get_commoncrawl_indexes
+import trafilatura
 
 def load_existing_urls(output_file):
     if not os.path.exists(output_file):
@@ -49,7 +50,7 @@ def main(output_file, pattern):
                 content, result = read_s3_range('https://data.commoncrawl.org/'+result['filename'], 
                                               result['offset'], result['length'])
                 if content:
-                    append_content(output_file, url, content)
+                    append_content(output_file, url, trafilatura.extract(content))
                     print(f"Saved content for: {url}")
                 else:
                     print(f"No content retrieved for: {url}")
