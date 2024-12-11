@@ -1,13 +1,8 @@
 FROM python:3.9-slim
 
 WORKDIR /app
+COPY . .
 
-# Install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -e .
 
-# Copy application code
-COPY scripts/ ./scripts/
-
-# Set entrypoint
-ENTRYPOINT ["python", "scripts/buenarda_worker.py"]
+ENTRYPOINT ["python", "-m", "scripts.buenarda_worker"]

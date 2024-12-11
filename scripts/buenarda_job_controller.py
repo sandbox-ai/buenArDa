@@ -25,6 +25,7 @@ def create_job_template(index_id, output_path, worker_id, total_workers):
                         "name": "crawler",
                         "image": "marianbasti/buenarda-worker:latest",
                         "args": [
+                            "python", "-m", "scripts.buenarda_worker",
                             "--index", index_id.lower(),
                             "--output", output_path,
                             "--worker-id", str(worker_id),
