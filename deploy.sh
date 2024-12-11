@@ -27,6 +27,45 @@ check_prerequisites() {
     fi
 }
 
+get_node_name() {
+    NODE_NAME=$(kubectl get nodes --no-headers -o custom-columns=":metadata.name" | head -n 1)
+    if [ -z "$NODE_NAME" ]; then
+        echo "Error: Could not get node name"
+        exit 1
+    fi
+    echo $NODE_NAME
+}
+
+create_persistent_volume() {
+    echo "Creating persistent volume..."
+    NODE_NAME=$(get_node_name)
+    cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: crawler-data-pv
+spec:
+  capacity:
+    storage: ${STORAGE_SIZE}
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-path
+  local:
+    path: ./data
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - ${NODE_NAME}
+EOF
+
+    mkdir -p ./data
+}
+
 # Create persistent volume and claim
 create_storage() {
     echo "Creating storage resources..."
@@ -74,7 +113,7 @@ main() {
     
     # Create namespace if it doesn't exist
     kubectl create namespace ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
-    
+    create_persistent_volume
     create_storage
     deploy_jobs
     
