@@ -5,23 +5,24 @@ set -e
 # Configuration
 DOCKER_IMAGE="marianbasti/buenarda-worker:latest"
 WORKERS_PER_INDEX=3
-STORAGE_SIZE="100Gi"
+STORAGE_SIZE="100Gi"  # Default value
 NAMESPACE="default"
 NFS_PATH="/mnt/buenarda"
 TEST_MODE=""
 PATTERN="*.ar"
 
-while getopts "i:tp:" opt; do
+while getopts "i:tp:s:" opt; do
   case $opt in
     i) NFS_SERVER="$OPTARG";;
     t) TEST_MODE="--test";;
     p) PATTERN="$OPTARG";;
-    *) echo "Usage: $0 -i <nfs_server_ip> [-t] [-p pattern]" >&2; exit 1;;
+    s) STORAGE_SIZE="$OPTARG";;
+    *) echo "Usage: $0 -i <nfs_server_ip> [-t] [-p pattern] [-s storage_size]" >&2; exit 1;;
   esac
 done
 
 if [ -z "$NFS_SERVER" ]; then
-    echo "Error: NFS server IP required. Usage: $0 -i <nfs_server_ip> [-t] [-p pattern]" >&2
+    echo "Error: NFS server IP required. Usage: $0 -i <nfs_server_ip> [-t] [-p pattern] [-s storage_size]" >&2
     exit 1
 fi
 
