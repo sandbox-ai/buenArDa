@@ -77,7 +77,12 @@ EOF
 # Deploy crawler jobs
 deploy_jobs() {
     echo "Deploying crawler jobs..."
-    python3 scripts/buenarda_job_controller.py --workers ${WORKERS_PER_INDEX}
+    # Add PYTHONPATH to include project root
+    SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+    export PYTHONPATH="${SCRIPT_DIR}:${PYTHONPATH}"
+    
+    # Run with module notation
+    python3 -m scripts.buenarda_job_controller --workers ${WORKERS_PER_INDEX}
 }
 
 # Main deployment flow
