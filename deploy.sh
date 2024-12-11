@@ -120,8 +120,9 @@ spec:
       storage: ${STORAGE_SIZE}
   storageClassName: nfs-storage
 EOF
-
-    kubectl wait --for=condition=bound pvc/crawler-data-pvc -n ${NAMESPACE} --timeout=30s
+    # Esto no anda? kubectl no detecta bound cuando sí está bound. HOTFIX: sleep
+    # kubectl wait --for=condition=bound pvc/crawler-data-pvc -n ${NAMESPACE} --timeout=30s
+    sleep 5
 }
 
 # Deploy crawler jobs
