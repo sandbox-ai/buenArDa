@@ -4,6 +4,17 @@ from requests.exceptions import RequestException
 import gzip
 import io
 
+def extract_html_from_warc(warc_content):
+    # Split at the double newline that separates headers from content
+    try:
+        # First split separates WARC headers from HTTP response
+        _, http_response = warc_content.split('\r\n\r\n', 1)
+        # Second split separates HTTP headers from HTML content
+        _, html_content = http_response.split('\r\n\r\n', 1)
+        return html_content
+    except ValueError:
+        return None
+
 def download_s3_range(bucket_url: str, byte_range_start: int, length: int, local_file_path: str) -> Tuple[bool, str]:
     """
     Download a specific byte range from an S3 bucket URL and save it to a local file.
@@ -68,7 +79,8 @@ def read_s3_range(bucket_url: str, byte_range_start: int, length: int) -> Tuple[
                 compressed_data = io.BytesIO(response.content)
                 with gzip.GzipFile(fileobj=compressed_data, mode='rb') as gz:
                     decompressed_content = gz.read().decode('utf-8')
-                return decompressed_content, "Success"
+                html = extract_html_from_warc(decompressed_content)
+                return html, "Success"
             else:
                 return None, f"Unexpected status code: {response.status_code}"
                 

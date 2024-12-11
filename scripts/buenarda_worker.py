@@ -73,8 +73,9 @@ def process_index(index_name, output_file, pattern="*.ar", worker_id=0, total_wo
                     result['offset'],
                     result['length']
                 )
+                content = trafilatura.extract(content)
                 if content:
-                    append_content(output_file, url, trafilatura.extract(content))
+                    append_content(output_file, url, content)
                     success_count += 1
                     if success_count % 100 == 0:
                         logger.info(f"Processed {success_count} URLs successfully")
