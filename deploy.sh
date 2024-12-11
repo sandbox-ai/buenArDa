@@ -49,28 +49,19 @@ get_node_name() {
     echo $NODE_NAME
 }
 
-create_persistent_volume() {
-    echo "Creating persistent volume..."
-    cat <<EOF | kubectl apply -f -
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: crawler-data-pv
-spec:
-  capacity:
-    storage: ${STORAGE_SIZE}
-  accessModes:
-    - ReadWriteMany
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: nfs-storage
-  nfs:
-    server: ${NFS_SERVER}
-    path: /mnt/buenarda
-EOF
+check_resource_exists() {
+    local resource=$1
+    local name=$2
+    kubectl get ${resource} ${name} &> /dev/null
 }
 
 setup_nfs_storage_class() {
-    echo "Creating NFS StorageClass..."
+    echo "Setting up NFS StorageClass..."
+    if check_resource_exists storageclass nfs-storage; then
+        echo "StorageClass nfs-storage already exists, skipping creation"
+        return
+    fi
+    
     cat <<EOF | kubectl apply -f -
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
@@ -84,7 +75,12 @@ EOF
 }
 
 create_persistent_volume() {
-    echo "Creating persistent volume..."
+    echo "Setting up persistent volume..."
+    if check_resource_exists pv crawler-data-pv; then
+        echo "PersistentVolume crawler-data-pv already exists, skipping creation"
+        return
+    fi
+
     cat <<EOF | kubectl apply -f -
 apiVersion: v1
 kind: PersistentVolume
@@ -104,7 +100,12 @@ EOF
 }
 
 create_storage() {
-    echo "Creating PVC..."
+    echo "Setting up PVC..."
+    if check_resource_exists pvc -n ${NAMESPACE} crawler-data-pvc; then
+        echo "PVC crawler-data-pvc already exists, skipping creation"
+        return
+    fi
+
     cat <<EOF | kubectl apply -f -
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -142,6 +143,8 @@ main() {
     
     # Create namespace if it doesn't exist
     kubectl create namespace ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+    
+    setup_nfs_storage_class
     create_persistent_volume
     create_storage
     deploy_jobs
