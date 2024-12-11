@@ -50,7 +50,9 @@ def process_index(index_name, output_file, pattern="*.ar", worker_id=0, total_wo
     existing_urls = load_existing_urls(output_file)
     
     try:
-        results = search_commoncrawl_index(pattern, index_name=index_name)
+        # Convert index name to uppercase for CommonCrawl URL
+        index_for_url = index_name.upper()
+        results = search_commoncrawl_index(pattern, index_name=index_for_url)
         logger.info(f"Found {len(results)} matching results in {index_name}")
         
         worker_results = [r for i, r in enumerate(results) if i % total_workers == worker_id]

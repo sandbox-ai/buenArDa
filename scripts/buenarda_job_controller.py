@@ -33,7 +33,7 @@ def create_job_template(index_id, output_path, worker_id, total_workers, pattern
                         "workingDir": "/app",
                         "command": ["python", "-m", "scripts.buenarda_worker"],
                         "args": [
-                            "--index", index_id.lower(),
+                            "--index", index_id,
                             "--output", output_path,
                             "--pattern", pattern,
                             "--worker-id", str(worker_id),
