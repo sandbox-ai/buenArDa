@@ -45,6 +45,12 @@ def create_job_template(index_id, output_path, worker_id, total_workers, pattern
                             "mountPath": "/data"
                         }]
                     }],
+                    "volumes": [{
+                        "name": "data",
+                        "persistentVolumeClaim": {
+                            "claimName": "crawler-data-pvc"
+                        }
+                    }],
                     "restartPolicy": "Never"
                 }
             },
