@@ -64,8 +64,8 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   storageClassName: nfs-storage
   nfs:
-    server: YOUR_NFS_SERVER_IP
-    path: /mnt/nfs_share
+    server: ${NFS_SERVER}
+    path: /mnt/buenarda
 EOF
 }
 
