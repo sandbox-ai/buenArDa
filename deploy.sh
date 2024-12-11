@@ -67,8 +67,29 @@ EOF
 }
 
 # Create persistent volume and claim
-create_storage() {
-    echo "Creating storage resources..."
+create_storage_with_pod() {
+    # Create test pod first
+    cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: volume-test
+  namespace: ${NAMESPACE}
+spec:
+  containers:
+  - name: volume-test
+    image: busybox
+    command: ["sleep", "infinity"]
+    volumeMounts:
+    - name: data
+      mountPath: /data
+  volumes:
+  - name: data
+    persistentVolumeClaim:
+      claimName: crawler-data-pvc
+EOF
+
+    # Now create PVC
     cat <<EOF | kubectl apply -f -
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -83,15 +104,12 @@ spec:
       storage: ${STORAGE_SIZE}
   storageClassName: local-path
 EOF
+
+    # Wait for binding
+    kubectl wait --for=condition=bound pvc/crawler-data-pvc -n ${NAMESPACE} --timeout=30s
     
-    echo "Waiting for PVC to be bound..."
-    kubectl wait --for=condition=bound pvc/crawler-data-pvc -n ${NAMESPACE} --timeout=30s || {
-        echo "Error: PVC failed to bind within timeout"
-        kubectl get pvc crawler-data-pvc -n ${NAMESPACE} -o yaml
-        exit 1
-    }
-    
-    echo "PVC created and bound successfully"
+    # Clean up test pod
+    kubectl delete pod volume-test -n ${NAMESPACE}
 }
 
 # Deploy crawler jobs
@@ -114,7 +132,7 @@ main() {
     # Create namespace if it doesn't exist
     kubectl create namespace ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
     create_persistent_volume
-    create_storage
+    create_storage_with_pod
     deploy_jobs
     
     echo "Deployment completed successfully!"
