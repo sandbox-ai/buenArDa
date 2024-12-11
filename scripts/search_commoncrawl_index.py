@@ -4,6 +4,16 @@ import json
 from typing import List, Optional, Dict
 import logging
 
+def get_commoncrawl_indexes():
+    try:
+        response = requests.get('https://index.commoncrawl.org/collinfo.json')
+        response.raise_for_status()
+        indexes = response.json()
+        return [index['id'] for index in indexes]
+    except Exception as e:
+        print(f"Error fetching indexes: {str(e)}")
+        return []
+
 def search_commoncrawl_index(
     pattern: str,
     index_name: str = 'CC-MAIN-2024-33',

@@ -3,17 +3,7 @@ import os
 import argparse
 import requests
 from scripts.get_s3_range import read_s3_range
-from scripts.search_commoncrawl_index import search_commoncrawl_index
-
-def get_commoncrawl_indexes():
-    try:
-        response = requests.get('https://index.commoncrawl.org/collinfo.json')
-        response.raise_for_status()
-        indexes = response.json()
-        return [index['id'] for index in indexes]
-    except Exception as e:
-        print(f"Error fetching indexes: {str(e)}")
-        return []
+from scripts.search_commoncrawl_index import search_commoncrawl_index, get_commoncrawl_indexes
 
 def load_existing_urls(output_file):
     if not os.path.exists(output_file):

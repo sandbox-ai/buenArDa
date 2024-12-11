@@ -3,10 +3,7 @@ from typing import Dict, List
 import time
 from kubernetes.client.rest import ApiException
 from kubernetes import client, config
-import json
-import os
-from base64 import b64encode
-from scripts.buenArDa import get_commoncrawl_indexes
+from scripts.search_commoncrawl_index import get_commoncrawl_indexes
 
 logging.basicConfig(
     level=logging.INFO,
