@@ -15,12 +15,12 @@ def extract_html_from_warc(warc_content):
     except ValueError:
         return None
 
-def download_s3_range(bucket_url: str, byte_range_start: int, length: int, local_file_path: str) -> Tuple[bool, str]:
+def download_cc_range(cc_url: str, byte_range_start: int, length: int, local_file_path: str) -> Tuple[bool, str]:
     """
-    Download a specific byte range from an S3 bucket URL and save it to a local file.
+    Download a specific byte range from CommonCrawl URL and save it to a local file.
     
     Args:
-        bucket_url: The URL of the S3 bucket resource
+        cc_url: The URL of the CommonCrawl resource
         byte_range_start: Starting byte position
         length: Number of bytes to download
         local_file_path: Path where the downloaded content will be saved
@@ -28,13 +28,13 @@ def download_s3_range(bucket_url: str, byte_range_start: int, length: int, local
     Returns:
         Tuple[bool, str]: (Success status, Error message if any)
     """
-    if not all([bucket_url, byte_range_start >= 0, length > 0, local_file_path]):
+    if not all([cc_url, byte_range_start >= 0, length > 0, local_file_path]):
         return False, "Invalid input parameters"
 
     headers = {'Range': f'bytes={byte_range_start}-{byte_range_start + length - 1}'}
 
     try:
-        with requests.get(bucket_url, headers=headers, stream=True) as response:
+        with requests.get(cc_url, headers=headers, stream=True) as response:
             response.raise_for_status()
             
             if response.status_code == 206:  # Partial content status code
@@ -50,12 +50,12 @@ def download_s3_range(bucket_url: str, byte_range_start: int, length: int, local
     except IOError as e:
         return False, f"File operation failed: {str(e)}"
 
-def read_s3_range(bucket_url: str, byte_range_start: int, length: int) -> Tuple[Optional[str], str]:
+def read_cc_range(cc_url: str, byte_range_start: int, length: int) -> Tuple[Optional[str], str]:
     """
-    Download and decompress a gzipped byte range from an S3 bucket URL.
+    Download and decompress a gzipped byte range from CommonCrawl URL.
     
     Args:
-        bucket_url: The URL of the S3 bucket resource
+        cc_url: The URL of the CommonCrawl resource
         byte_range_start: Starting byte position
         length: Number of bytes to download
     
@@ -65,13 +65,13 @@ def read_s3_range(bucket_url: str, byte_range_start: int, length: int) -> Tuple[
     byte_range_start = int(byte_range_start) if isinstance(byte_range_start, str) else byte_range_start
     length = int(length) if isinstance(length, str) else length
     
-    if not all([bucket_url, byte_range_start >= 0, length > 0]):
+    if not all([cc_url, byte_range_start >= 0, length > 0]):
         return None, "Invalid input parameters"
 
     headers = {'Range': f'bytes={byte_range_start}-{byte_range_start + length - 1}'}
 
     try:
-        with requests.get(bucket_url, headers=headers, stream=True) as response:
+        with requests.get(cc_url, headers=headers, stream=True) as response:
             response.raise_for_status()
             
             if response.status_code == 206:  # Partial content status code

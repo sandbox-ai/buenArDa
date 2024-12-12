@@ -1,7 +1,7 @@
 import json
 import os
 import argparse
-from scripts.get_s3_range import read_s3_range
+from scripts.get_cc_range import read_cc_range
 from scripts.search_commoncrawl_index import search_commoncrawl_index
 import logging
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -31,8 +31,8 @@ def append_content(output_file, url, content):
         f.write(json_line + '\n')
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
-def fetch_s3_content(filename, offset, length):
-    return read_s3_range(
+def fetch_cc_content(filename, offset, length):
+    return read_cc_range(
         'https://data.commoncrawl.org/'+filename,
         offset,
         length
@@ -68,7 +68,7 @@ def process_index(index_name, output_file, pattern="*.ar", worker_id=0, total_wo
                 continue
                 
             try:
-                content, _ = fetch_s3_content(
+                content, _ = fetch_cc_content(
                     result['filename'],
                     result['offset'],
                     result['length']

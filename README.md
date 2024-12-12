@@ -7,7 +7,7 @@ buenArDa es un proyecto destinado a crear un conjunto de datos argentinos de alt
 
 - Extrae datos de los índices de CommonCrawl
 - Filtra contenido con [Trafilatura](https://trafilatura.readthedocs.io/en/latest/)
-- Descarga y procesa rangos de bytes específicos de los buckets de S3
+- Descarga y procesa rangos de bytes específicos de los buckets de cc
 - Descomprime y guarda el contenido localmente
 - Soporta procesamiento incremental para evitar datos duplicados
 

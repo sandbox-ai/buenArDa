@@ -2,7 +2,7 @@ import json
 import os
 import argparse
 import requests
-from scripts.get_s3_range import read_s3_range
+from scripts.get_cc_range import read_cc_range
 from scripts.search_commoncrawl_index import search_commoncrawl_index, get_commoncrawl_indexes
 import trafilatura
 
@@ -47,7 +47,7 @@ def main(output_file, pattern):
                 continue
                 
             try:
-                content, result = read_s3_range('https://data.commoncrawl.org/'+result['filename'], 
+                content, result = read_cc_range('https://data.commoncrawl.org/'+result['filename'], 
                                               result['offset'], result['length'])
                 content = trafilatura.extract(content)
                 if content:
