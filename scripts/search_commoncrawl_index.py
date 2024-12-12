@@ -3,6 +3,8 @@ from urllib.parse import quote_plus
 import json
 from typing import List, Optional, Dict
 import logging
+from tenacity import retry, stop_after_attempt, wait_exponential, wait_random
+import time, random
 
 def get_commoncrawl_indexes():
     try:
@@ -14,6 +16,11 @@ def get_commoncrawl_indexes():
         print(f"Error fetching indexes: {str(e)}")
         return []
 
+@retry(
+    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=1, min=4, max=60) + wait_random(0, 2),
+    reraise=True
+)
 def search_commoncrawl_index(
     pattern: str,
     index_name: str = 'CC-MAIN-2024-33',
@@ -21,6 +28,7 @@ def search_commoncrawl_index(
 ) -> Optional[List[Dict]]:
     """
     Search the Common Crawl index for a URL pattern and return matching records.
+    Includes automatic retry with exponential backoff and jitter.
     
     Args:
         pattern: URL pattern to search for
@@ -31,6 +39,9 @@ def search_commoncrawl_index(
         List of dictionaries containing matching records or None if request fails
     """
     try:
+        # Add initial random delay to help avoid thundering herd
+        time.sleep(random.uniform(0, 2))
+        
         encoded_url = quote_plus(pattern)
         index_url = f'{server}{index_name}-index?url={encoded_url}&output=json'
         
@@ -39,6 +50,11 @@ def search_commoncrawl_index(
         }
         
         response = requests.get(index_url, headers=headers)
+        
+        if response.status_code == 503:
+            logging.warning("Received 503 error, will retry with backoff")
+            raise requests.exceptions.RequestException("Service temporarily unavailable")
+            
         response.raise_for_status()
         
         # Parse JSONL response into list of dictionaries

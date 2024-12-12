@@ -1,6 +1,7 @@
 import logging
 from typing import Dict, List
 import time
+import random
 from kubernetes.client.rest import ApiException
 from kubernetes import client, config
 from scripts.search_commoncrawl_index import get_commoncrawl_indexes
@@ -118,6 +119,8 @@ def main(workers_per_index=1, test_mode=False, pattern="*.ar"):
                     pattern
                 )
                 try:
+                    # Add random delay between job creation
+                    time.sleep(random.uniform(1, 5))
                     response = batch_v1.create_namespaced_job(
                         body=job,
                         namespace="default"
