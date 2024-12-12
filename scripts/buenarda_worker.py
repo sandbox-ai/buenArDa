@@ -1,6 +1,7 @@
 import json
 import os
 import argparse
+import re
 from scripts.get_cc_range import read_cc_range
 from scripts.search_commoncrawl_index import search_commoncrawl_index
 import logging
@@ -42,6 +43,33 @@ def handle_shutdown(signum, frame):
     logger.info("Received shutdown signal, cleaning up...")
     sys.exit(0)
 
+def clean_content(content):
+    if not content:
+        return None
+    
+    # Remove JavaScript
+    content = re.sub(r'<script[^>]*>[\s\S]*?</script>', '', content)
+    
+    # Remove style tags
+    content = re.sub(r'<style[^>]*>[\s\S]*?</style>', '', content)
+    
+    # Remove HTML tags while keeping their content
+    content = re.sub(r'<[^>]+>', ' ', content)
+    
+    # Remove extra whitespace and newlines
+    content = re.sub(r'\s+', ' ', content)
+    
+    # Remove special HTML entities
+    content = re.sub(r'&[a-zA-Z0-9#]+;', ' ', content)
+    
+    # Clean unicode spaces and separators
+    content = re.sub(r'[\u200b\u200c\u200d\ufeff]', '', content)
+    
+    content = content.strip()
+    
+    # Return None if content is too short after cleaning
+    return content if len(content) > 50 else None
+
 def process_index(index_name, output_file, pattern="*.ar", worker_id=0, total_workers=1):
     if not index_name or not output_file:
         raise ValueError("Invalid index_name or output_file")
@@ -73,12 +101,16 @@ def process_index(index_name, output_file, pattern="*.ar", worker_id=0, total_wo
                     result['offset'],
                     result['length']
                 )
+                # Trafilatura initial cleaning
                 content = trafilatura.extract(content)
                 if content:
-                    append_content(output_file, url, content)
-                    success_count += 1
-                    if success_count % 100 == 0:
-                        logger.info(f"Processed {success_count} URLs successfully")
+                    # Additional cleaning of html and js
+                    content = clean_content(content)
+                    if content:
+                        append_content(output_file, url, content)
+                        success_count += 1
+                        if success_count % 100 == 0:
+                            logger.info(f"Processed {success_count} URLs successfully")
             except Exception as e:
                 error_count += 1
                 logger.error(f"Error processing {url}: {str(e)}")
