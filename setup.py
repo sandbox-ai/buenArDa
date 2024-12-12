@@ -9,6 +9,5 @@ setup(
         'tenacity',
         'requests',
         'trafilatura',
-        'datatrove[processing]',
     ],
 )
