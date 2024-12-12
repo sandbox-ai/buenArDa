@@ -8,6 +8,7 @@ setup(
     install_requires=[
         'tenacity',
         'requests',
-        'trafilatura'
+        'trafilatura',
+        'datatrove[processing]',
     ],
 )
