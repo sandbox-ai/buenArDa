@@ -3,7 +3,7 @@ import os
 import argparse
 import re
 from scripts.get_cc_range import read_cc_range
-from scripts.search_commoncrawl_index import search_commoncrawl_index
+from scripts.search_commoncrawl_index import search_with_retry
 import logging
 from tenacity import retry, stop_after_attempt, wait_exponential
 import signal
@@ -81,9 +81,18 @@ def process_index(index_name, output_file, pattern="*.ar", worker_id=0, total_wo
     try:
         # Convert index name to uppercase for CommonCrawl URL
         index_for_url = index_name.upper()
-        results = search_commoncrawl_index(pattern, index_name=index_for_url)
-        logger.info(f"Found {len(results)} matching results in {index_name}")
         
+        try:
+            results = search_with_retry(pattern, index_for_url)
+            if not results:
+                logger.warning(f"No results found for {index_name}")
+                return
+        except Exception as e:
+            logger.error(f"Failed to search index {index_name}: {str(e)}")
+            return
+            
+        logger.info(f"Found {len(results)} matching results in {index_name}")
+                
         worker_results = [r for i, r in enumerate(results) if i % total_workers == worker_id]
         logger.info(f"Worker {worker_id}/{total_workers} processing {len(worker_results)} results")
         

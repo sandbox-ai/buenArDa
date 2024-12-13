@@ -13,7 +13,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def create_job_template(index_id, output_path, worker_id, total_workers, pattern):
-    return {
+    job_template = {
         "apiVersion": "batch/v1",
         "kind": "Job",
         "metadata": {
@@ -58,6 +58,18 @@ def create_job_template(index_id, output_path, worker_id, total_workers, pattern
         }
     }
 
+    job_template["spec"]["backoffLimit"] = 6
+    
+    # Add exponential backoff
+    job_template["spec"]["template"]["spec"]["containers"][0]["env"].extend([
+        {
+            "name": "PYTHONUNBUFFERED",
+            "value": "1"
+        }
+    ])
+    
+    return job_template  
+
 def validate_k8s_resources():
     """Check if required K8s resources exist"""
     try:
@@ -70,7 +82,9 @@ def validate_k8s_resources():
         raise RuntimeError(f"Required K8s resources not found: {e}")
 
 def monitor_jobs(batch_v1, jobs: Dict[str, dict]):
-    """Monitor job status and log progress"""
+    max_consecutive_failures = 3
+    failure_counts = {}
+    
     while jobs:
         for job_name, job_info in list(jobs.items()):
             try:
@@ -82,8 +96,29 @@ def monitor_jobs(batch_v1, jobs: Dict[str, dict]):
                     logger.info(f"Job {job_name} completed successfully")
                     jobs.pop(job_name)
                 elif status.status.failed:
-                    logger.error(f"Job {job_name} failed")
-                    jobs.pop(job_name)
+                    failure_counts[job_name] = failure_counts.get(job_name, 0) + 1
+                    
+                    if failure_counts[job_name] >= max_consecutive_failures:
+                        logger.error(f"Job {job_name} failed after {max_consecutive_failures} attempts")
+                        jobs.pop(job_name)
+                    else:
+                        logger.warning(f"Job {job_name} failed, attempt {failure_counts[job_name]}")
+                        # Delete failed job before recreating
+                        try:
+                            batch_v1.delete_namespaced_job(
+                                name=job_name,
+                                namespace="default",
+                                propagation_policy="Background"
+                            )
+                        except ApiException:
+                            pass
+                        
+                        # Recreate job after short delay
+                        time.sleep(60)
+                        batch_v1.create_namespaced_job(
+                            body=jobs[job_name]["job_template"],
+                            namespace="default"
+                        )
             except ApiException as e:
                 logger.error(f"Error monitoring job {job_name}: {e}")
         time.sleep(30)

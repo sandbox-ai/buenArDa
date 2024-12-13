@@ -3,7 +3,7 @@ from urllib.parse import quote_plus
 import json
 from typing import List, Optional, Dict
 import logging
-from tenacity import retry, stop_after_attempt, wait_exponential, wait_random
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 import time, random
 
 def get_commoncrawl_indexes():
@@ -17,10 +17,17 @@ def get_commoncrawl_indexes():
         return []
 
 @retry(
-    stop=stop_after_attempt(5),
-    wait=wait_exponential(multiplier=1, min=4, max=60) + wait_random(0, 2),
-    reraise=True
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=4, max=10),
+    retry=retry_if_exception_type(requests.exceptions.RequestException)
 )
+
+def search_with_retry(pattern, index_name):
+    results = search_commoncrawl_index(pattern, index_name=index_name)
+    if results is None:
+        raise ValueError(f"No results returned for index {index_name}")
+    return results
+
 def search_commoncrawl_index(
     pattern: str,
     index_name: str = 'CC-MAIN-2024-33',
