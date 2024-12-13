@@ -146,7 +146,7 @@ def main(workers_per_index=1, test_mode=False, pattern="*.ar"):
         
         for index in indexes:
             for worker_id in range(workers_per_index):
-                job = create_job_template(
+                job_template = create_job_template(
                     index,
                     f"/data/crawl_data_{index.replace('/', '-')}_{worker_id}.jsonl",
                     worker_id,
@@ -154,21 +154,20 @@ def main(workers_per_index=1, test_mode=False, pattern="*.ar"):
                     pattern
                 )
                 try:
-                    # Add random delay between job creation
                     time.sleep(random.uniform(1, 5))
                     response = batch_v1.create_namespaced_job(
-                        body=job,
+                        body=job_template,
                         namespace="default"
                     )
                     active_jobs[response.metadata.name] = {
                         'index': index,
-                        'worker_id': worker_id
+                        'worker_id': worker_id,
+                        'job_template': job_template  # Store the template
                     }
                     logger.info(f"Created job for index {index} worker {worker_id}")
                 except ApiException as e:
                     logger.error(f"Error creating job for {index} worker {worker_id}: {e}")
-        
-        # Monitor jobs until completion
+
         monitor_jobs(batch_v1, active_jobs)
         
     except Exception as e:
