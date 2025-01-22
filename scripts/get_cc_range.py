@@ -86,5 +86,5 @@ def read_cc_range(cc_url: str, byte_range_start: int, length: int) -> Tuple[Opti
                 
     except RequestException as e:
         return None, f"Download failed: {str(e)}"
-    except (IOError, gzip.GzipError) as e:
+    except (IOError) as e:
         return None, f"Decompression failed: {str(e)}"
